@@ -1,0 +1,78 @@
+# Copyright 2019 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
+package(default_visibility = ["//visibility:public"])
+
+licenses(["notice"])
+
+exports_files(["LICENSE"])
+
+pytype_library(
+    name = "empirical_calibration",
+    srcs = [
+        "empirical_calibration.py",
+    ],
+    srcs_version = "PY2AND3",
+    deps = [
+        # absl:app dep,
+        # enum dep,
+        # numpy dep,
+        # scipy dep,
+        # six dep,
+        # sklearn dep,
+        # typing dep,
+    ],
+)
+
+py_test(
+    name = "empirical_calibration_test",
+    srcs = [
+        "empirical_calibration_test.py",
+    ],
+    srcs_version = "PY2AND3",
+    deps = [
+        ":empirical_calibration",
+        "//testing/pybase:parameterized",
+        "//empirical_calibration/data:kang_schafer",
+        # mock dep,
+        # numpy dep,
+        # scipy dep,
+        # six dep,
+    ],
+)
+
+pytype_library(
+    name = "from_formula",
+    srcs = [
+        "from_formula.py",
+    ],
+    srcs_version = "PY2AND3",
+    deps = [
+        ":empirical_calibration",
+        # pandas dep,
+        # patsy dep,
+    ],
+)
+
+py_test(
+    name = "from_formula_test",
+    srcs = [
+        "from_formula_test.py",
+    ],
+    srcs_version = "PY2AND3",
+    deps = [
+        ":from_formula",
+        "//testing/pybase:parameterized",
+    ],
+)
