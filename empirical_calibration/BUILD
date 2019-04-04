@@ -19,11 +19,10 @@ licenses(["notice"])
 exports_files(["LICENSE"])
 
 pytype_library(
-    name = "empirical_calibration",
+    name = "core",
     srcs = [
         "__init__.py",
-        "empirical_calibration.py",
-        "from_formula.py",
+        "core.py",
     ],
     srcs_version = "PY2AND3",
     deps = [
@@ -40,32 +39,19 @@ pytype_library(
 )
 
 py_test(
-    name = "empirical_calibration_test",
+    name = "core_test",
     size = "small",
     srcs = [
-        "empirical_calibration_test.py",
+        "core_test.py",
     ],
     srcs_version = "PY2AND3",
     deps = [
-        ":empirical_calibration",
+        ":core",
         "//testing/pybase:parameterized",
         "//empirical_calibration/data:kang_schafer",
         # mock dep,
         # numpy dep,
         # scipy dep,
         # six dep,
-    ],
-)
-
-py_test(
-    name = "from_formula_test",
-    size = "small",
-    srcs = [
-        "from_formula_test.py",
-    ],
-    srcs_version = "PY2AND3",
-    deps = [
-        ":empirical_calibration",
-        "//testing/pybase:parameterized",
     ],
 )

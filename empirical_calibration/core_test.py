@@ -21,6 +21,9 @@ import empirical_calibration as ec
 from empirical_calibration.data import kang_schafer as ks
 import mock
 import numpy as np
+import pandas as pd
+import pandas.util.testing as pd_testing
+import patsy
 import scipy
 from six.moves import range
 import unittest
@@ -187,7 +190,7 @@ class EmpiricalCalibrationTest(parameterized.TestCase):
           max_weight=1.0 / (_SIZE + 1000))
 
   @parameterized.parameters((0.0), (0.07), (0.12))
-  @mock.patch("__main__.ec.empirical_calibration.calibrate",
+  @mock.patch("__main__.ec.core.calibrate",
               side_effect=_mock_calibrate)
   def test_maybe_exact_calibrate(
       self,
@@ -222,6 +225,94 @@ class EmpiricalCalibrationTest(parameterized.TestCase):
     self.assertAlmostEqual(duplicated_l2, weighted_l2)
     self.assertAlmostEqual(
         0.0, np.linalg.norm(duplicated_weights - weighted_weights))
+
+
+class FromFormulaTest(parameterized.TestCase):
+
+  def setUp(self):
+    super(FromFormulaTest, self).setUp()
+    # Toy df and dmatrix for tests.
+    self.seed_df = pd.DataFrame({
+        "x": ["a", "b", "c"],
+        "y": [1, 2, 3]
+    }, columns=["x", "y"])
+    self.seed_dmatrix = pd.DataFrame({
+        "x[T.b]": [0.0, 1.0, 0.0],
+        "x[T.c]": [0.0, 0.0, 1.0],
+        "y": [1.0, 2.0, 3.0],
+        "x[T.b]:y": [0.0, 2.0, 0.0],
+        "x[T.c]:y": [0.0, 0.0, 3.0]
+    }, columns=["x[T.b]", "x[T.c]",
+                "y", "x[T.b]:y", "x[T.c]:y"])
+    # Generate df's and dmatrix's with more rows.
+    self.idx = [0, 0,
+                1, 1, 1, 1,
+                2, 2, 2, 2, 2, 2, 2, 2]
+    self.target_idx = [0, 0, 0, 0,
+                       1, 1, 1, 1,
+                       2, 2, 2, 2]
+
+    self.df = self.seed_df.iloc[self.idx]
+    self.target_df = self.seed_df.iloc[self.target_idx]
+
+    # Drop interaction terms.
+    self.dmatrix = self.seed_dmatrix.iloc[self.idx]
+    self.target_dmatrix = self.seed_dmatrix.iloc[self.target_idx]
+
+    self.columns = ["x[T.b]", "x[T.c]", "y"]
+    self.dmatrix = self.dmatrix[self.columns]
+    self.target_dmatrix = self.target_dmatrix[self.columns]
+
+  def test_dmatrix_from_formula_drop_intercept(self):
+    # Intercept is dropped even when formula asks for Intercept.
+    self.assertNotIn(
+        "Intercept",
+        ec.dmatrix_from_formula(formula="~ 1 + x + y + x:y",
+                                df=self.seed_df).columns)
+
+  def test_dmatrix_from_formula_with_interaction(self):
+    # x:y in formula asks for interaction.
+    pd_testing.assert_frame_equal(
+        self.seed_dmatrix,
+        ec.dmatrix_from_formula(formula="~ x + y + x:y", df=self.seed_df))
+
+  def test_dmatrix_from_formula_no_interaction(self):
+    # No interaction, so only main effect terms are expected.
+    pd_testing.assert_frame_equal(
+        self.seed_dmatrix[["x[T.b]", "x[T.c]", "y"]],
+        ec.dmatrix_from_formula(formula="~ x + y", df=self.seed_df))
+
+  def test_dmatrix_from_formula_y_raises_error(self):
+    # Error should be raised if dependent variable is specified in formula.
+    with self.assertRaises(patsy.PatsyError):
+      ec.dmatrix_from_formula(formula="y ~ x", df=self.seed_df)
+
+  @parameterized.named_parameters(
+      ("entropy, same weights", ec.Objective.ENTROPY, [1] * 12),
+      ("quadratic, same weights", ec.Objective.QUADRATIC, [1] * 12),
+      ("entropy,  varying weights", ec.Objective.ENTROPY, [1] * 4 + [1] * 8),
+      ("quadratic, varying weights", ec.Objective.QUADRATIC, [1] * 4 + [1] * 8),
+  )
+  def test_from_formula(self, objective, target_weights):
+    # Two api should give the same results.
+    # _ec indicates the original empirical_calibration API.
+    weights_ec, l2_norm_ec = ec.maybe_exact_calibrate(
+        covariates=self.dmatrix,
+        target_covariates=self.target_dmatrix,
+        target_weights=target_weights,
+        objective=objective)
+
+    # _fec indicates empirical_calibration's formula API.
+    formula = "~ x + y"
+    weights_fec, l2_norm_fec = ec.from_formula(
+        formula=formula,
+        df=self.df,
+        target_df=self.target_df,
+        target_weights=target_weights,
+        objective=objective)
+
+    np.testing.assert_almost_equal(weights_ec, weights_fec, decimal=3)
+    self.assertAlmostEqual(l2_norm_ec, l2_norm_fec, places=2)
 
 
 if __name__ == "__main__":

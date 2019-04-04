@@ -34,10 +34,12 @@ from __future__ import print_function
 from absl import logging
 import enum
 import numpy as np
+import pandas as pd
+import patsy
 from scipy import optimize
 from six.moves import range
 from sklearn import preprocessing
-from typing import Tuple
+from typing import Text, Tuple
 
 
 _MAX_EXPONENT = 20
@@ -301,3 +303,66 @@ def maybe_exact_calibrate(covariates: np.ndarray,
 
   left = (right + 1) // 2 - 1
   return zoom(left, right, weights)
+
+
+def dmatrix_from_formula(formula: Text, df: pd.DataFrame) -> pd.DataFrame:
+  """Generates dmatrix from formula and dataframe.
+
+  This is a wrapper around patsy's dmatrix function.
+
+  Args:
+    formula: Formula to be fed into patsy. No outcome variable allowed.
+    df: Df containing the raw data.
+
+  Returns:
+    Design matrix.
+  """
+  dmatrix = patsy.highlevel.dmatrix(formula, df, return_type="dataframe")
+  if "Intercept" in dmatrix.columns:
+    dmatrix.drop(columns="Intercept", inplace=True)
+  return dmatrix
+
+
+def from_formula(formula: Text,
+                 df: pd.DataFrame,
+                 target_df: pd.DataFrame,
+                 target_weights: np.ndarray = None,
+                 autoscale: bool = False,
+                 objective: Objective = Objective.ENTROPY,
+                 max_weight: float = 1.0,
+                 increment: float = 0.001) -> Tuple[np.ndarray, float]:
+  """"Runs empirical calibration function from formula.
+
+  This is the formula API of the maybe_exact_calibrate function.
+
+  Args:
+    formula: Formula used to generate design matrix.
+      No outcome variable allowed.
+    df: Data to be calibrated.
+    target_df: Data containing the target.
+    target_weights: Weights for target_df.
+      If None, equal weights will be used.
+    autoscale: Whether to scale  covariates to [0, 1] and apply the same
+      scaling to target covariates. Setting it to True can help improve
+      numerical stability.
+    objective: The objective of the convex optimization problem.
+    max_weight: The upper bound on weights. Must be between uniform weight
+      (1 / _size) and 1.0.
+    increment: The increment of the search sequence.
+
+  Returns:
+    A tuple of (weights, l2_norm) where
+      weights: The weights for the  subjects. They should sum up to 1.
+      l2_norm: The L2 norm of the covariate balance constraint.
+  """
+  target_covariates = dmatrix_from_formula(formula=formula, df=target_df)
+  covariates = dmatrix_from_formula(formula=formula, df=df)
+
+  return maybe_exact_calibrate(
+      covariates=covariates,
+      target_covariates=target_covariates,
+      target_weights=target_weights,
+      autoscale=autoscale,
+      objective=objective,
+      max_weight=max_weight,
+      increment=increment)
