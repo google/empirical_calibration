@@ -19,14 +19,14 @@ from __future__ import division
 from __future__ import google_type_annotations
 from __future__ import print_function
 
-from empirical_calibration import empirical_calibration as ec
+import empirical_calibration as ec
 import numpy as np
 import pandas as pd
 import patsy
 from typing import Text, Tuple
 
-def _dmatrix_from_formula(formula: Text,
-                          df: pd.DataFrame) -> pd.DataFrame:
+
+def dmatrix_from_formula(formula: Text, df: pd.DataFrame) -> pd.DataFrame:
   """Generates dmatrix from formula and dataframe.
 
   This is a wrapper around patsy's dmatrix function.
@@ -76,10 +76,8 @@ def from_formula(formula: Text,
       weights: The weights for the  subjects. They should sum up to 1.
       l2_norm: The L2 norm of the covariate balance constraint.
   """
-  target_covariates = _dmatrix_from_formula(formula=formula,
-                                            df=target_df)
-  covariates = _dmatrix_from_formula(formula=formula,
-                                     df=df)
+  target_covariates = dmatrix_from_formula(formula=formula, df=target_df)
+  covariates = dmatrix_from_formula(formula=formula, df=df)
 
   return ec.maybe_exact_calibrate(
       covariates=covariates,

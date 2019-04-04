@@ -17,7 +17,7 @@ from __future__ import division
 from __future__ import print_function
 
 # Dependency imports
-from empirical_calibration import empirical_calibration as ec
+import empirical_calibration as ec
 from empirical_calibration.data import kang_schafer as ks
 import mock
 import numpy as np
@@ -187,7 +187,8 @@ class EmpiricalCalibrationTest(parameterized.TestCase):
           max_weight=1.0 / (_SIZE + 1000))
 
   @parameterized.parameters((0.0), (0.07), (0.12))
-  @mock.patch("__main__.ec.calibrate", side_effect=_mock_calibrate)
+  @mock.patch("__main__.ec.empirical_calibration.calibrate",
+              side_effect=_mock_calibrate)
   def test_maybe_exact_calibrate(
       self,
       min_feasible_l2_norm,

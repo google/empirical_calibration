@@ -18,8 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from empirical_calibration import empirical_calibration as ec
-from empirical_calibration import from_formula as fec
+import empirical_calibration as ec
 
 import numpy as np
 import pandas as pd
@@ -29,10 +28,10 @@ import unittest
 from absl.testing import parameterized
 
 
-
 class FromFormulaTest(parameterized.TestCase):
 
   def setUp(self):
+    super(FromFormulaTest, self).setUp()
     # Toy df and dmatrix for tests.
     self.seed_df = pd.DataFrame({
         "x": ["a", "b", "c"],
@@ -69,25 +68,25 @@ class FromFormulaTest(parameterized.TestCase):
     # Intercept is dropped even when formula asks for Intercept.
     self.assertNotIn(
         "Intercept",
-        fec._dmatrix_from_formula(formula="~ 1 + x + y + x:y",
-                                  df=self.seed_df).columns)
+        ec.dmatrix_from_formula(formula="~ 1 + x + y + x:y",
+                                df=self.seed_df).columns)
 
   def test_dmatrix_from_formula_with_interaction(self):
     # x:y in formula asks for interaction.
     pd_testing.assert_frame_equal(
         self.seed_dmatrix,
-        fec._dmatrix_from_formula(formula="~ x + y + x:y", df=self.seed_df))
+        ec.dmatrix_from_formula(formula="~ x + y + x:y", df=self.seed_df))
 
   def test_dmatrix_from_formula_no_interaction(self):
     # No interaction, so only main effect terms are expected.
     pd_testing.assert_frame_equal(
         self.seed_dmatrix[["x[T.b]", "x[T.c]", "y"]],
-        fec._dmatrix_from_formula(formula="~ x + y", df=self.seed_df))
+        ec.dmatrix_from_formula(formula="~ x + y", df=self.seed_df))
 
   def test_dmatrix_from_formula_y_raises_error(self):
     # Error should be raised if dependent variable is specified in formula.
     with self.assertRaises(patsy.PatsyError):
-      fec._dmatrix_from_formula(formula="y ~ x", df=self.seed_df)
+      ec.dmatrix_from_formula(formula="y ~ x", df=self.seed_df)
 
   @parameterized.named_parameters(
       ("entropy, same weights", ec.Objective.ENTROPY, [1] * 12),
@@ -106,7 +105,7 @@ class FromFormulaTest(parameterized.TestCase):
 
     # _fec indicates empirical_calibration's formula API.
     formula = "~ x + y"
-    weights_fec, l2_norm_fec = fec.from_formula(
+    weights_fec, l2_norm_fec = ec.from_formula(
         formula=formula,
         df=self.df,
         target_df=self.target_df,
