@@ -21,13 +21,17 @@ exports_files(["LICENSE"])
 pytype_library(
     name = "empirical_calibration",
     srcs = [
+        "__init__.py",
         "empirical_calibration.py",
+        "from_formula.py",
     ],
     srcs_version = "PY2AND3",
     deps = [
         # absl:app dep,
         # enum dep,
         # numpy dep,
+        # pandas dep,
+        # patsy dep,
         # scipy dep,
         # six dep,
         # sklearn dep,
@@ -37,6 +41,7 @@ pytype_library(
 
 py_test(
     name = "empirical_calibration_test",
+    size = "small",
     srcs = [
         "empirical_calibration_test.py",
     ],
@@ -52,27 +57,15 @@ py_test(
     ],
 )
 
-pytype_library(
-    name = "from_formula",
-    srcs = [
-        "from_formula.py",
-    ],
-    srcs_version = "PY2AND3",
-    deps = [
-        ":empirical_calibration",
-        # pandas dep,
-        # patsy dep,
-    ],
-)
-
 py_test(
     name = "from_formula_test",
+    size = "small",
     srcs = [
         "from_formula_test.py",
     ],
     srcs_version = "PY2AND3",
     deps = [
-        ":from_formula",
+        ":empirical_calibration",
         "//testing/pybase:parameterized",
     ],
 )
