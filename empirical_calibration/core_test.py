@@ -56,7 +56,8 @@ class EmpiricalCalibrationTest(parameterized.TestCase):
   def assert_weights_constraints(self, weights, max_weight=1.0):
     self.assertAlmostEqual(1.0, weights.sum())
     self.assertTrue(all(weights >= 0))
-    self.assertTrue(all(weights <= max_weight))
+    # 1.00001 leaves a buffer for floating-point representation error.
+    self.assertTrue(all(weights <= max_weight * 1.00001))
 
   def assert_balancing_constraint(self, weights, l2_norm=0.0):
     self.assertAlmostEqual(

@@ -153,20 +153,22 @@ def calibrate(covariates: np.ndarray,
   if l2_norm < 0:
     raise ValueError("l2_norm %f is negative" % l2_norm)
 
-  num_, num_covariates = covariates.shape
-  uniform_weight = 1.0 / num_
+  num_samples, num_covariates = covariates.shape
+  uniform_weight = 1.0 / num_samples
   if max_weight < uniform_weight:
     raise ValueError("max_weight %f cannot be smaller than uniform weight %f" %
                      (max_weight, uniform_weight))
 
-  z = np.hstack((np.expand_dims(np.ones(num_), 1), covariates - np.average(
-      target_covariates, weights=target_weights, axis=0)))
+  z = np.hstack(
+      (np.expand_dims(np.ones(num_samples), 1),
+       covariates - np.average(target_covariates,
+                               weights=target_weights, axis=0)))
 
   if objective == Objective.ENTROPY:
     # Running entropy balancing directly with a weight bound may fail due to bad
-    # initial value for beta, so we first run it without the weight bound to get
+    # initial value for beta, so we first run it with a huge bound (1e8) to get
     # a good guess of beta.
-    weight_link = np.exp
+    weight_link = lambda x: np.exp(np.minimum(x, np.log(1e8)))
     beta_init = np.zeros(num_covariates + 1)
   elif objective == Objective.QUADRATIC:
     weight_link = lambda x: np.clip(x, 0.0, max_weight)
@@ -197,8 +199,8 @@ def calibrate(covariates: np.ndarray,
   logging.info(msg)
   logging.info("Number of function calls: %d", info_dict["nfev"])
 
-  if objective == Objective.ENTROPY and max_weight < np.max(weights):
-    weight_link = lambda x: np.minimum(np.exp(x), max_weight)
+  if objective == Objective.ENTROPY and np.max(weights) > max_weight:
+    weight_link = lambda x: np.exp(np.minimum(x, np.log(max_weight)))
 
     logging.info(
         "Running calibration with objective=%s, autoscale=%s, l2_norm=%s, "
@@ -236,8 +238,9 @@ def maybe_exact_calibrate(covariates: np.ndarray,
     covariates: covariates to be calibrated.
     target_covariates:  covariates to be used as target in calibration. The
       number of columns should match `covariates`.
-    target_weights: Weights for target_covariates. If None, equal weights will
-      be used.
+    target_weights: Weights for target_covariates. These are needed when the
+      target_covariates itself has weights. Its length must equal the number of
+      rows in target_covariates. If None, equal weights will be used.
     autoscale: Whether to scale  covariates to [0, 1] and apply the same scaling
       to target covariates. Setting it to True can help improve numerical
       stability.
@@ -340,8 +343,9 @@ def from_formula(formula: Text,
       No outcome variable allowed.
     df: Data to be calibrated.
     target_df: Data containing the target.
-    target_weights: Weights for target_df.
-      If None, equal weights will be used.
+    target_weights: Weights for target_df. These are needed when the
+      target_df itself has weights. Its length must equal the number of
+      rows in target_df. If None, equal weights will be used.
     autoscale: Whether to scale  covariates to [0, 1] and apply the same
       scaling to target covariates. Setting it to True can help improve
       numerical stability.
