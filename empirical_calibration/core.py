@@ -116,23 +116,25 @@ def calibrate(covariates: np.ndarray,
 
   Args:
     covariates: covariates to be calibrated.
-    target_covariates:  covariates to be used as target in calibration. The
+    target_covariates: covariates to be used as target in calibration. The
       number of columns should match `covariates`.
-    target_weights: Weights for target_covariates. If None, equal weights will
-      be used.
-    autoscale: Whether to scale  covariates to [0, 1] and apply the same scaling
+    target_weights: Weights for target_covariates. These are needed when the
+      target_covariates themselves have weights. Its length must equal the
+      number of rows in target_covariates. If None, equal weights will be used.
+    autoscale: Whether to scale covariates to [0, 1] and apply the same scaling
       to target covariates. Setting it to True might help improve numerical
       stability.
-    objective: The objective of the convex optimization problem.
+    objective: The objective of the convex optimization problem. Supported
+      values are Objective.ENTROPY and Objective.QUADRATIC.
     max_weight: The upper bound on weights. Must between uniform weight
       (1 / size) and 1.0.
     l2_norm: The L2 norm of the covaraite balance constraint, i.e., the
-      Euclidean distance between the weighted mean of  covariates and the simple
+      Euclidean distance between the weighted mean of covariates and the simple
       mean of target covaraites after balancing.
 
   Returns:
     A tuple of (weights, success) where
-      weights: The weights for the  subjects. They should sum up to 1.
+      weights: The weights for the subjects. They should sum up to 1.
       success: Whether the constrained optimization succeeds.
 
   Raises:
@@ -145,7 +147,7 @@ def calibrate(covariates: np.ndarray,
         " covariates (%d)" % (target_covariates.shape[1], covariates.shape[1]))
   if autoscale:
     scaler = preprocessing.MinMaxScaler()
-    # For each  covariate, find its min and max, and rescale to [0, 1].
+    # For each covariate, find its min and max, and rescale to [0, 1].
     covariates = scaler.fit_transform(covariates)
     # For each target covariate, apply the same rescaling.
     target_covariates = scaler.transform(target_covariates)
@@ -236,12 +238,12 @@ def maybe_exact_calibrate(covariates: np.ndarray,
 
   Args:
     covariates: covariates to be calibrated.
-    target_covariates:  covariates to be used as target in calibration. The
+    target_covariates: covariates to be used as target in calibration. The
       number of columns should match `covariates`.
     target_weights: Weights for target_covariates. These are needed when the
       target_covariates itself has weights. Its length must equal the number of
       rows in target_covariates. If None, equal weights will be used.
-    autoscale: Whether to scale  covariates to [0, 1] and apply the same scaling
+    autoscale: Whether to scale covariates to [0, 1] and apply the same scaling
       to target covariates. Setting it to True can help improve numerical
       stability.
     objective: The objective of the convex optimization problem.
@@ -251,7 +253,7 @@ def maybe_exact_calibrate(covariates: np.ndarray,
 
   Returns:
     A tuple of (weights, l2_norm) where
-      weights: The weights for the  subjects. They should sum up to 1.
+      weights: The weights for the subjects. They should sum up to 1.
       l2_norm: The L2 norm of the covariate balance constraint.
   """
   if autoscale:
@@ -346,7 +348,7 @@ def from_formula(formula: Text,
     target_weights: Weights for target_df. These are needed when the
       target_df itself has weights. Its length must equal the number of
       rows in target_df. If None, equal weights will be used.
-    autoscale: Whether to scale  covariates to [0, 1] and apply the same
+    autoscale: Whether to scale covariates to [0, 1] and apply the same
       scaling to target covariates. Setting it to True can help improve
       numerical stability.
     objective: The objective of the convex optimization problem.
@@ -356,7 +358,7 @@ def from_formula(formula: Text,
 
   Returns:
     A tuple of (weights, l2_norm) where
-      weights: The weights for the  subjects. They should sum up to 1.
+      weights: The weights for the subjects. They should sum up to 1.
       l2_norm: The L2 norm of the covariate balance constraint.
   """
   target_covariates = dmatrix_from_formula(formula=formula, df=target_df)

@@ -291,7 +291,7 @@ class FromFormulaTest(parameterized.TestCase):
   @parameterized.named_parameters(
       ("entropy, same weights", ec.Objective.ENTROPY, [1] * 12),
       ("quadratic, same weights", ec.Objective.QUADRATIC, [1] * 12),
-      ("entropy,  varying weights", ec.Objective.ENTROPY, [1] * 4 + [1] * 8),
+      ("entropy, varying weights", ec.Objective.ENTROPY, [1] * 4 + [1] * 8),
       ("quadratic, varying weights", ec.Objective.QUADRATIC, [1] * 4 + [1] * 8),
   )
   def test_from_formula(self, objective, target_weights):
