@@ -115,19 +115,23 @@ def calibrate(covariates: np.ndarray,
   ```
 
   Args:
-    covariates: covariates to be calibrated.
+    covariates: covariates to be calibrated. All values must be numeric.
+      For categorical values, the `from_formula` function is often more
+      convenient.
     target_covariates: covariates to be used as target in calibration. The
-      number of columns should match `covariates`.
+      number of columns should match `covariates`. All values must be numeric.
+      For categorical values, the `from_formula` function is often more
+      convenient.
     target_weights: Weights for target_covariates. These are needed when the
       target_covariates themselves have weights. Its length must equal the
       number of rows in target_covariates. If None, equal weights will be used.
-    autoscale: Whether to scale covariates to [0, 1] and apply the same scaling
-      to target covariates. Setting it to True might help improve numerical
-      stability.
+    autoscale: Whether to scale `covariates` to [0, 1] and apply the same
+      scaling to `target_covariates`. Setting it to True might help improve
+      numerical stability.
     objective: The objective of the convex optimization problem. Supported
       values are Objective.ENTROPY and Objective.QUADRATIC.
     max_weight: The upper bound on weights. Must between uniform weight
-      (1 / size) and 1.0.
+      (1 / number of rows in `covariates`) and 1.0.
     l2_norm: The L2 norm of the covaraite balance constraint, i.e., the
       Euclidean distance between the weighted mean of covariates and the simple
       mean of target covaraites after balancing.
@@ -237,18 +241,22 @@ def maybe_exact_calibrate(covariates: np.ndarray,
   phase.
 
   Args:
-    covariates: covariates to be calibrated.
+    covariates: covariates to be calibrated. All values must be numeric.
+      For categorical values, the `from_formula` function is often more
+      convenient.
     target_covariates: covariates to be used as target in calibration. The
-      number of columns should match `covariates`.
+      number of columns should match `covariates`. All values must be numeric.
+      For categorical values, the `from_formula` function is often more
+      convenient.
     target_weights: Weights for target_covariates. These are needed when the
       target_covariates itself has weights. Its length must equal the number of
       rows in target_covariates. If None, equal weights will be used.
-    autoscale: Whether to scale covariates to [0, 1] and apply the same scaling
-      to target covariates. Setting it to True can help improve numerical
-      stability.
+    autoscale: Whether to scale `covariates` to [0, 1] and apply the same
+      scaling to `target_covariates`. Setting it to True can help improve
+      numerical stability.
     objective: The objective of the convex optimization problem.
     max_weight: The upper bound on weights. Must between uniform weight
-      (1 / size) and 1.0.
+      (1 / number of rows in `covariates`) and 1.0.
     increment: The increment of the search sequence.
 
   Returns:
@@ -348,12 +356,12 @@ def from_formula(formula: Text,
     target_weights: Weights for target_df. These are needed when the
       target_df itself has weights. Its length must equal the number of
       rows in target_df. If None, equal weights will be used.
-    autoscale: Whether to scale covariates to [0, 1] and apply the same
-      scaling to target covariates. Setting it to True can help improve
+    autoscale: Whether to scale `covariates` to [0, 1] and apply the same
+      scaling to `target_covariate`. Setting it to True can help improve
       numerical stability.
     objective: The objective of the convex optimization problem.
-    max_weight: The upper bound on weights. Must be between uniform weight
-      (1 / _size) and 1.0.
+    max_weight: The upper bound on weights. Must between uniform weight
+      (1 / number of rows in `df`) and 1.0.
     increment: The increment of the search sequence.
 
   Returns:
