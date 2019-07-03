@@ -17,7 +17,7 @@
 
 from __future__ import absolute_import
 from __future__ import division
-from __future__ import google_type_annotations
+# from __future__ import google_type_annotations
 from __future__ import print_function
 
 import numpy as np
@@ -60,7 +60,7 @@ class Simulation(object):
       the covariates.
   """
 
-  def __init__(self, size: int = 2000):
+  def __init__(self, size = 2000):
     """Constructs a `Simulation` instance.
 
     Args:
@@ -78,7 +78,7 @@ class Simulation(object):
         [27.4, 13.7, 13.7, 13.7])) + np.random.randn(size)  # pyformat: disable
 
   @property
-  def transformed_covariates(self) -> np.ndarray:
+  def transformed_covariates(self):
     """Returns nonlinear transformations of the raw covariates.
 
     When the transformed covariates are observed in place of the true
