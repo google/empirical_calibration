@@ -27,7 +27,6 @@ setup(
     license='Apache 2.0',
     packages=find_packages(),
     install_requires=[
-        'enum',
         'numpy >= 1.11.1',
         'pandas',
         'patsy',
