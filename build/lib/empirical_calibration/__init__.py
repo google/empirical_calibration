@@ -12,28 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-"""Setup for empirical calibration package."""
-
-from setuptools import find_packages
-from setuptools import setup
-
-setup(
-    name='empirical_calibration',
-    version='0.1',
-    description='Package for empirical calibration',
-    author='Google LLC',
-    author_email='no-reply@google.com',
-    url='https://github.com/google/empirical_calibration',
-    license='Apache 2.0',
-    packages=find_packages(),
-    install_requires=[
-        'absl-py'
-        'numpy >= 1.11.1',
-        'pandas',
-        'patsy',
-        'scipy',
-        'six',
-        'sklearn',
-        'typing',
-    ],
-)
+from .core import *
