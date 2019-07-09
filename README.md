@@ -1,7 +1,5 @@
 # A Python Library For Empirical Calibration
 
-## tl:dr
-
 Dealing with biased data samples is a common task across many statistical
 fields. In survey sampling, bias often occurs due to the unrepresentative
 samples. In causal studies with observational data, the treated vs untreated
@@ -18,4 +16,50 @@ real-world data.
 
 ## Paper
 
-Please see [pdf](https://arxiv.org/abs/1906.11920)
+Please see [pdf](https://arxiv.org/abs/1906.11920).
+
+## Installation
+
+The easiest way is propably using pip:
+
+```
+pip install -q git+https://github.com/google/empirical_calibration
+```
+
+If you are using a machine without admin rights, you can do:
+
+```
+pip install -q git+https://github.com/google/empirical_calibration --user
+```
+
+If you are using [Google Colab](https://colab.research.google.com/), just add
+"!" to the beginning:
+
+```
+pip install -q git+https://github.com/google/empirical_calibration
+```
+
+Package works for python 2 and python 3, although we may stop supporting python
+2 in the future.
+
+## Usage
+Package can be imported as
+
+```python
+import empirical_calibration as ec
+import data
+```
+
+The best way to learn how to use the package is probably by following one of the
+notebooks, and the recommended way of opening them is Google Colab.
+
+* Survey calibration
+   - [Toy simulation](./notebooks/survey_calibration_simulated.ipynb)
+   - [Kang Schafer simulation](./notebooks/kang_schafer_population_mean.ipynb)
+* Causal inference
+
+## People
+Package is created and maintained by Xiaojing Wang, Jingang Miao, and Yunting
+Sun.
+
+
