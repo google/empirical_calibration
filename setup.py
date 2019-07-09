@@ -25,7 +25,7 @@ setup(
     author_email='no-reply@google.com',
     url='https://github.com/google/empirical_calibration',
     license='Apache 2.0',
-    packages=find_packages(),
+    packages=find_packages(exclude=["data"]),
     install_requires=[
         'absl-py',
         'numpy >= 1.11.1',
