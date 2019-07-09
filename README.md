@@ -47,7 +47,6 @@ Package can be imported as
 
 ```python
 import empirical_calibration as ec
-import data
 ```
 
 The best way to learn how to use the package is probably by following one of the

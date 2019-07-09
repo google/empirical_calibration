@@ -13,4 +13,4 @@
 # limitations under the License.
 # ============================================================================
 from .core import *
-from . import data
+from .. import data
