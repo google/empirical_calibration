@@ -27,6 +27,8 @@ pytype_library(
     srcs_version = "PY2AND3",
     deps = [
         # absl:app dep,
+        "//empirical_calibration/data:kang_schafer",
+        "//empirical_calibration/data:lalonde",
         # enum dep,
         # numpy dep,
         # pandas dep,
@@ -48,7 +50,6 @@ py_test(
     deps = [
         ":core",
         "//testing/pybase:parameterized",
-        "//empirical_calibration/data:kang_schafer",
         # mock dep,
         # numpy dep,
         # scipy dep,
