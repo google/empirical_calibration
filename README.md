@@ -16,7 +16,9 @@ real-world data.
 
 ## Paper
 
-Please see [pdf](https://arxiv.org/abs/1906.11920).
+Wang, Xiaojing, Miao, Jingang, and Sun, Yunting. (2019).
+A Python Library For Empirical Calibration.
+[*arXiv preprint arXiv:1906.11920*](https://arxiv.org/abs/1906.11920).
 
 ## Installation
 
