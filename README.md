@@ -58,6 +58,7 @@ notebooks, and the recommended way of opening them is Google Colab.
    - [Toy simulation](./notebooks/survey_calibration_simulated.ipynb)
    - [Kang Schafer simulation](./notebooks/kang_schafer_population_mean.ipynb)
 * Causal inference
+   - [Lalonde](./notebooks/causal_inference_lalonde.ipynb)
 
 ## People
 Package is created and maintained by Xiaojing Wang, Jingang Miao, and Yunting
