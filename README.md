@@ -38,7 +38,7 @@ If you are using [Google Colab](https://colab.research.google.com/), just add
 "!" to the beginning:
 
 ```
-pip install -q git+https://github.com/google/empirical_calibration
+!pip install -q git+https://github.com/google/empirical_calibration
 ```
 
 Package works for python 2 and python 3, although we may stop supporting python
