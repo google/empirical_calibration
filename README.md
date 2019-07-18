@@ -60,6 +60,7 @@ notebooks, and the recommended way of opening them is Google Colab.
    - [Example in R package CVXR](./notebooks/survey_calibration_cvxr.ipynb)
 * Causal inference
    - [Lalonde](./notebooks/causal_inference_lalonde.ipynb)
+   - [Kang-Schafer simulation](./notebooks/causal_inference_kang_schafer.ipynb)
 
 ## People
 Package is created and maintained by Xiaojing Wang, Jingang Miao, and Yunting
