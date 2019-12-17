@@ -46,7 +46,6 @@ py_test(
     srcs = [
         "kang_schafer_test.py",
     ],
-    python_version = "PY2",
     srcs_version = "PY2AND3",
     deps = [
         ":kang_schafer",
