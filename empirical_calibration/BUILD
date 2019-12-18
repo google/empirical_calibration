@@ -24,7 +24,7 @@ pytype_library(
         "__init__.py",
         "core.py",
     ],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     deps = [
         # absl:app dep,
         "//empirical_calibration/data:kang_schafer",

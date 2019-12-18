@@ -28,7 +28,7 @@ References:
 
 from __future__ import absolute_import
 from __future__ import division
-# from __future__ import google_type_annotations
+
 from __future__ import print_function
 
 from absl import logging
@@ -60,13 +60,13 @@ class Objective(enum.Enum):
   QUADRATIC = 1
 
 
-def calibrate(covariates,
-              target_covariates,
-              target_weights = None,
-              autoscale = False,
-              objective = Objective.ENTROPY,
-              max_weight = 1.0,
-              l2_norm = 0):
+def calibrate(covariates: np.ndarray,
+              target_covariates: np.ndarray,
+              target_weights: np.ndarray = None,
+              autoscale: bool = False,
+              objective: Objective = Objective.ENTROPY,
+              max_weight: float = 1.0,
+              l2_norm: float = 0) -> Tuple[np.ndarray, bool]:
   """Calibrates covariates toward target.
 
   It solves a constrained convex optimization problem that minimizes the
@@ -224,13 +224,13 @@ def calibrate(covariates,
   return weights, success
 
 
-def maybe_exact_calibrate(covariates,
-                          target_covariates,
-                          target_weights = None,
-                          autoscale = False,
-                          objective = Objective.ENTROPY,
-                          max_weight = 1.0,
-                          increment = 0.001):
+def maybe_exact_calibrate(covariates: np.ndarray,
+                          target_covariates: np.ndarray,
+                          target_weights: np.ndarray = None,
+                          autoscale: bool = False,
+                          objective: Objective = Objective.ENTROPY,
+                          max_weight: float = 1.0,
+                          increment: float = 0.001) -> Tuple[np.ndarray, float]:
   """Finds feasible weights with the tightest covariate balance constraint.
 
   It is possible that there is no feasible solution for the weighted mean of
@@ -318,7 +318,7 @@ def maybe_exact_calibrate(covariates,
   return zoom(left, right, weights)
 
 
-def dmatrix_from_formula(formula, df):
+def dmatrix_from_formula(formula: Text, df: pd.DataFrame) -> pd.DataFrame:
   """Generates dmatrix from formula and dataframe.
 
   This is a wrapper around patsy's dmatrix function.
@@ -336,14 +336,14 @@ def dmatrix_from_formula(formula, df):
   return dmatrix
 
 
-def from_formula(formula,
-                 df,
-                 target_df,
-                 target_weights = None,
-                 autoscale = False,
-                 objective = Objective.ENTROPY,
-                 max_weight = 1.0,
-                 increment = 0.001):
+def from_formula(formula: Text,
+                 df: pd.DataFrame,
+                 target_df: pd.DataFrame,
+                 target_weights: np.ndarray = None,
+                 autoscale: bool = False,
+                 objective: Objective = Objective.ENTROPY,
+                 max_weight: float = 1.0,
+                 increment: float = 0.001) -> Tuple[np.ndarray, float]:
   """"Runs empirical calibration function from formula.
 
   This is the formula API of the maybe_exact_calibrate function.
