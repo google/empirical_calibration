@@ -21,9 +21,13 @@ References:
   Political Analysis, 20(1), 25-46.
   https://web.stanford.edu/~jhain/Paper/PA2012.pdf
 
+  Wang, X., Miao, J., & Sun, Y. (2019). A Python library For empirical
+  calibration.
+  https://arxiv.org/abs/1906.11920
+
   Zhao, Q., & Percival, D. (2017). Entropy balancing is doubly robust. Journal
   of Causal Inference, 5(1).
-  https://arxiv.org/pdf/1501.03571.pdf
+  https://arxiv.org/abs/1501.03571
 """
 
 from __future__ import absolute_import
