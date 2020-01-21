@@ -30,6 +30,11 @@ References:
   https://arxiv.org/abs/1501.03571
 """
 
+from __future__ import absolute_import
+from __future__ import division
+
+from __future__ import print_function
+
 from absl import logging
 import enum
 import numpy as np
