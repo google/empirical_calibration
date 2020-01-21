@@ -24,7 +24,7 @@ pytype_library(
         "__init__.py",
         "core.py",
     ],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     deps = [
         # absl:app dep,
         "//empirical_calibration/data:kang_schafer",
@@ -46,7 +46,7 @@ py_test(
     srcs = [
         "core_test.py",
     ],
-    srcs_version = "PY2AND3",
+    python_version = "PY3",
     deps = [
         ":core",
         "//testing/pybase:parameterized",
