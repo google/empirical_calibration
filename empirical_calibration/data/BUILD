@@ -23,7 +23,7 @@ py_library(
     srcs = [
         "lalonde.py",
     ],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     deps = [
         "//pyglib:gfile",
         # pandas dep,
@@ -35,7 +35,7 @@ py_library(
     srcs = [
         "kang_schafer.py",
     ],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     deps = [
         # numpy dep,
     ],
@@ -46,7 +46,8 @@ py_test(
     srcs = [
         "kang_schafer_test.py",
     ],
-    srcs_version = "PY2AND3",
+    python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":kang_schafer",
         "//testing/pybase",

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-# Dependency imports
+
 import empirical_calibration as ec
 from empirical_calibration.data import kang_schafer as ks
 import mock
@@ -21,7 +21,6 @@ import pandas as pd
 import pandas.util.testing as pd_testing
 import patsy
 import scipy
-from six.moves import range
 import unittest
 from absl.testing import parameterized
 
@@ -43,7 +42,7 @@ def _mock_calibrate(covariates, target_covariates, target_weights, autoscale,
 class EmpiricalCalibrationTest(parameterized.TestCase):
 
   def setUp(self):
-    super(EmpiricalCalibrationTest, self).setUp()
+    super().setUp()
     np.random.seed(123)
     simulation = ks.Simulation(_SIZE)
     self.covariates = simulation.covariates[simulation.treatment == 0]
@@ -227,7 +226,7 @@ class EmpiricalCalibrationTest(parameterized.TestCase):
 class FromFormulaTest(parameterized.TestCase):
 
   def setUp(self):
-    super(FromFormulaTest, self).setUp()
+    super().setUp()
     # Toy df and dmatrix for tests.
     self.seed_df = pd.DataFrame({
         "x": ["a", "b", "c"],

@@ -12,18 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
+
 """Kang-Schafer simulation to evaluate observational causal methods.
 """
-
-from __future__ import absolute_import
-from __future__ import division
-
-from __future__ import print_function
 
 import numpy as np
 
 
-class Simulation(object):
+class Simulation:
   """Kang-Schafer simulation.
 
   The simulation can be used to illustrate selection bias of outcome under

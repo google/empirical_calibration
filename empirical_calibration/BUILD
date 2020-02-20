@@ -47,6 +47,7 @@ py_test(
         "core_test.py",
     ],
     python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":core",
         "//testing/pybase:parameterized",

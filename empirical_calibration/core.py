@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
+
 """Empirical calibration.
 
 References:
@@ -30,15 +31,15 @@ References:
   https://arxiv.org/abs/1501.03571
 """
 
-from absl import logging
 import enum
+from typing import Tuple
+
+from absl import logging
 import numpy as np
 import pandas as pd
 import patsy
 from scipy import optimize
-from six.moves import range
 from sklearn import preprocessing
-from typing import Text, Tuple
 
 
 _MAX_EXPONENT = 20
@@ -317,7 +318,7 @@ def maybe_exact_calibrate(covariates: np.ndarray,
   return zoom(left, right, weights)
 
 
-def dmatrix_from_formula(formula: Text, df: pd.DataFrame) -> pd.DataFrame:
+def dmatrix_from_formula(formula: str, df: pd.DataFrame) -> pd.DataFrame:
   """Generates dmatrix from formula and dataframe.
 
   This is a wrapper around patsy's dmatrix function.
@@ -335,7 +336,7 @@ def dmatrix_from_formula(formula: Text, df: pd.DataFrame) -> pd.DataFrame:
   return dmatrix
 
 
-def from_formula(formula: Text,
+def from_formula(formula: str,
                  df: pd.DataFrame,
                  target_df: pd.DataFrame,
                  target_weights: np.ndarray = None,
