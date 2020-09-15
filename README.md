@@ -41,8 +41,7 @@ If you are using [Google Colab](https://colab.research.google.com/), just add
 !pip install -q git+https://github.com/google/empirical_calibration
 ```
 
-Package works for python 2 and python 3, although we may stop supporting python
-2 in the future.
+Package works for python 3.6 or later.
 
 ## Usage
 Package can be imported as
