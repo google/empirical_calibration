@@ -175,7 +175,7 @@ def calibrate(covariates: np.ndarray,
     # initial value for beta, so we first run it with a huge bound (1e8) to get
     # a good guess of beta.
     weight_link = lambda x: np.exp(
-        np.minimum(np.log(baseline_weights) * (x - 1), np.log(1e8)))
+        np.minimum(np.log(baseline_weights) + (x - 1), np.log(1e8)))
     beta_init = np.zeros(num_covariates + 1)
   elif objective == Objective.QUADRATIC:
     weight_link = lambda x: np.clip(
@@ -215,7 +215,7 @@ def calibrate(covariates: np.ndarray,
 
   if objective == Objective.ENTROPY and np.max(weights) > max_weight:
     weight_link = lambda x: np.exp(
-        np.minimum(np.log(baseline_weights) * (x - 1), np.log(max_weight)))
+        np.minimum(np.log(baseline_weights) + (x - 1), np.log(max_weight)))
     logging.info(
         "Running calibration with objective=%s, autoscale=%s, l2_norm=%s, "
         "max_weight=%s:", objective.name, autoscale, l2_norm, max_weight)
