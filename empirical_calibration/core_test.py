@@ -207,7 +207,7 @@ class EmpiricalCalibrationTest(parameterized.TestCase):
   def test_target_weights(self):
     # Replicating the first 10 rows of self.target_covariates should be
     # equivalent to
-    # assigning a weight of 2 to each of the first 10 rows and 0 for others.
+    # assigning a weight of 2 to each of the first 10 rows and 1 for others.
     n = len(self.target_covariates)
     index = list(range(10)) + list(range(n))
     weights = [2] * 10 + [1] * (n - 10)
@@ -221,6 +221,38 @@ class EmpiricalCalibrationTest(parameterized.TestCase):
     self.assertAlmostEqual(duplicated_l2, weighted_l2)
     self.assertAlmostEqual(
         0.0, np.linalg.norm(duplicated_weights - weighted_weights))
+ 
+  @parameterized.named_parameters(
+      ("entropy", ec.Objective.ENTROPY),
+      ("quadratic", ec.Objective.QUADRATIC),
+  )
+  def test_uniform_weights(self, objective):
+    # when covariates == target_covariates, uniform weights should be returned.
+    covariates = target_covariates = np.random.normal(size=(100, 4))
+    weights, success = ec.calibrate(
+        covariates=covariates,
+        target_covariates=target_covariates,
+        objective=objective
+    )
+    self.assertTrue(all(np.isclose(weights, 1.0 / 100)))
+
+  @parameterized.named_parameters(
+      ("entropy", ec.Objective.ENTROPY),
+      ("quadratic", ec.Objective.QUADRATIC),
+  )
+  def test_baseline_weights(self, objective):
+    covariates = target_covariates = np.random.normal(size=(100, 2))
+    repeats = np.repeat([2, 1], 50)
+    weights, success = ec.calibrate(
+        covariates=covariates,
+        target_covariates=target_covariates,
+        baseline_weights=repeats,
+        target_weights=repeats,
+        objective=ec.Objective.QUADRATIC
+    )
+    # First 50 rows should have 2 / 3 of the weights.
+    expected = repeats * 2 / 3 / 100
+    self.assertTrue(all(np.isclose(weights, expected)))
 
 
 class FromFormulaTest(parameterized.TestCase):
