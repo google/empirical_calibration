@@ -63,6 +63,6 @@ notebooks, and the recommended way of opening them is Google Colab.
 
 ## People
 Package is created and maintained by Xiaojing Wang, Jingang Miao, and Yunting
-Sun.
+Sun. Special thanks to Emil Martayan for helping add `baseline_weights` support.
 
 
