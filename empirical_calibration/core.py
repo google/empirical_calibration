@@ -65,7 +65,7 @@ def calibrate(covariates: np.ndarray,
               baseline_weights: np.ndarray = None,
               target_weights: np.ndarray = None,
               autoscale: bool = False,
-              objective: Objective = Objective.ENTROPY,
+              objective: Objective = Objective.QUADRATIC,
               max_weight: float = 1.0,
               l2_norm: float = 0) -> Tuple[np.ndarray, bool]:
   """Calibrates covariates toward target.
@@ -160,10 +160,7 @@ def calibrate(covariates: np.ndarray,
     raise ValueError("max_weight %f cannot be smaller than uniform weight %f" %
                      (max_weight, uniform_weight))
 
-  if baseline_weights is None:
-    baseline_weights = np.repeat(uniform_weight, num_samples)
-  else:
-    baseline_weights = baseline_weights / sum(baseline_weights)
+  baseline_weights_is_none = baseline_weights is None
 
   z = np.hstack(
       (np.expand_dims(np.ones(num_samples), 1),
@@ -174,26 +171,32 @@ def calibrate(covariates: np.ndarray,
     # Running entropy balancing directly with a weight bound may fail due to bad
     # initial value for beta, so we first run it with a huge bound (1e8) to get
     # a good guess of beta.
-    weight_link = lambda x: np.exp(
-        np.minimum(np.log(baseline_weights) + (x - 1), np.log(1e8)))
+    if baseline_weights_is_none:
+      weight_link = lambda x: np.exp(np.minimum(x, np.log(1e8)))
+    else:
+      weight_link = lambda x: np.exp(
+          np.minimum(np.log(baseline_weights) + (x - 1), np.log(1e8)))
     beta_init = np.zeros(num_covariates + 1)
   elif objective == Objective.QUADRATIC:
-    weight_link = lambda x: np.clip(
-        x * baseline_weights + baseline_weights, 0.0, max_weight)
+    if baseline_weights_is_none:
+      weight_link = lambda x: np.clip(x, 0.0, max_weight)
+      # Solution of the dual problem without the non-negative weight constraint.
+      beta_init = np.linalg.solve(
+          np.matmul(z.T, z), np.concatenate((np.ones(1),
+                                             np.zeros(num_covariates))))
+    else:
+      weight_link = lambda x: np.clip(
+          x * baseline_weights + baseline_weights, 0.0, max_weight)
     # Solution of the dual problem without the non-negative weight constraint.
-    # beta_init = np.linalg.solve(
-    #     np.matmul(z.T, z), np.concatenate((np.ones(1),
-    #                                        np.zeros(num_covariates))))
-    beta_init = np.linalg.solve(
-        z.T @ np.diag(baseline_weights) @ z,
-        np.concatenate((np.ones(1), np.zeros(num_covariates))) -
-        z.T @ baseline_weights
-    )
+      beta_init = np.linalg.solve(
+          z.T @ np.diag(baseline_weights) @ z,
+          np.concatenate((np.ones(1), np.zeros(num_covariates))) -
+          z.T @ baseline_weights
+      )
   else:
     raise ValueError("unknown objective %s" % objective)
 
   def estimating_equation(beta):
-    # weights = weight_link(np.dot(z, beta))
     weights = weight_link(np.dot(z, beta))
 
     norm = np.linalg.norm(beta[1:])
@@ -214,8 +217,12 @@ def calibrate(covariates: np.ndarray,
   logging.info("Number of function calls: %d", info_dict["nfev"])
 
   if objective == Objective.ENTROPY and np.max(weights) > max_weight:
-    weight_link = lambda x: np.exp(
-        np.minimum(np.log(baseline_weights) + (x - 1), np.log(max_weight)))
+    if baseline_weights_is_none:
+      weight_link = lambda x: np.exp(np.minimum(x, np.log(max_weight)))
+    else:
+      weight_link = lambda x: np.exp(
+          np.minimum(np.log(baseline_weights) + (x - 1), np.log(max_weight)))
+
     logging.info(
         "Running calibration with objective=%s, autoscale=%s, l2_norm=%s, "
         "max_weight=%s:", objective.name, autoscale, l2_norm, max_weight)
@@ -237,7 +244,7 @@ def maybe_exact_calibrate(covariates: np.ndarray,
                           baseline_weights: np.ndarray = None,
                           target_weights: np.ndarray = None,
                           autoscale: bool = False,
-                          objective: Objective = Objective.ENTROPY,
+                          objective: Objective = Objective.QUADRATIC,
                           max_weight: float = 1.0,
                           increment: float = 0.001) -> Tuple[np.ndarray, float]:
   """Finds feasible weights with the tightest covariate balance constraint.
@@ -351,7 +358,7 @@ def from_formula(formula: str,
                  baseline_weights: np.ndarray = None,
                  target_weights: np.ndarray = None,
                  autoscale: bool = False,
-                 objective: Objective = Objective.ENTROPY,
+                 objective: Objective = Objective.QUADRATIC,
                  max_weight: float = 1.0,
                  increment: float = 0.001) -> Tuple[np.ndarray, float]:
   """"Runs empirical calibration function from formula.
