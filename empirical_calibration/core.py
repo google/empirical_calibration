@@ -161,6 +161,8 @@ def calibrate(covariates: np.ndarray,
                      (max_weight, uniform_weight))
 
   baseline_weights_is_none = baseline_weights is None
+  if baseline_weights is not None:
+    baseline_weights = baseline_weights / sum(baseline_weights)
 
   z = np.hstack(
       (np.expand_dims(np.ones(num_samples), 1),
