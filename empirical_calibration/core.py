@@ -59,6 +59,8 @@ class Objective(enum.Enum):
   # maximizes the effective sample size.
   QUADRATIC = 1
 
+class ConvergenceError(Exception):
+  pass
 
 def calibrate(covariates: np.ndarray,
               target_covariates: np.ndarray,
