@@ -30,10 +30,10 @@ _SIZE = 2000
 
 
 def _mock_calibrate(covariates, target_covariates, target_weights, autoscale,
-                    objective, max_weight, l2_norm):
+                    objective, min_weight, max_weight, l2_norm):
   """Mocks the `calibrate` to return success only when `l2_norm` is large."""
   del target_covariates, covariates, target_weights,
-  del autoscale, objective, max_weight
+  del autoscale, objective, min_weight, max_weight
   if l2_norm < _mock_calibrate.min_feasible_l2_norm:
     return None, False
   return None, True
@@ -48,10 +48,11 @@ class EmpiricalCalibrationTest(parameterized.TestCase):
     self.covariates = simulation.covariates[simulation.treatment == 0]
     self.target_covariates = simulation.covariates[simulation.treatment == 1]
 
-  def assert_weights_constraints(self, weights, max_weight=1.0):
+  def assert_weights_constraints(self, weights, min_weight=0.0, max_weight=1.0):
     self.assertAlmostEqual(1.0, weights.sum())
     self.assertTrue(all(weights >= 0))
     # 1.00001 leaves a buffer for floating-point representation error.
+    self.assertTrue(all(weights >= min_weight * (1.0-0.00001)))
     self.assertTrue(all(weights <= max_weight * 1.00001))
 
   def assert_balancing_constraint(self, weights, l2_norm=0.0):
@@ -62,24 +63,33 @@ class EmpiricalCalibrationTest(parameterized.TestCase):
             np.matmul(self.covariates.T, weights)))
 
   @parameterized.parameters(
-      (ec.Objective.ENTROPY, 1.0, 0.0),
-      (ec.Objective.ENTROPY, 1.0, 0.1),
-      (ec.Objective.ENTROPY, 0.005, 0.0),
-      (ec.Objective.ENTROPY, 0.005, 0.1),
-      (ec.Objective.QUADRATIC, 1.0, 0.0),
-      (ec.Objective.QUADRATIC, 1.0, 0.1),
-      (ec.Objective.QUADRATIC, 0.005, 0.0),
-      (ec.Objective.QUADRATIC, 0.005, 0.1),
+      (ec.Objective.ENTROPY, 0.0, 1.0, 0.0),
+      (ec.Objective.ENTROPY, 0.0, 1.0, 0.1),
+      (ec.Objective.ENTROPY, 0.0, 0.005, 0.0),
+      (ec.Objective.ENTROPY, 0.0, 0.005, 0.1),
+      (ec.Objective.QUADRATIC, 0.0, 1.0, 0.0),
+      (ec.Objective.QUADRATIC, 0.0, 1.0, 0.1),
+      (ec.Objective.QUADRATIC, 0.0, 0.005, 0.0),
+      (ec.Objective.QUADRATIC, 0.0, 0.005, 0.1),
+      (ec.Objective.ENTROPY, 0.00005, 1.0, 0.0),
+      (ec.Objective.ENTROPY, 0.00005, 1.0, 0.1),
+      (ec.Objective.ENTROPY, 0.00005, 0.005, 0.0),
+      (ec.Objective.ENTROPY, 0.00005, 0.005, 0.1),
+      (ec.Objective.QUADRATIC, 0.00005, 1.0, 0.0),
+      (ec.Objective.QUADRATIC, 0.00005, 1.0, 0.1),
+      (ec.Objective.QUADRATIC, 0.00005, 0.005, 0.0),
+      (ec.Objective.QUADRATIC, 0.00005, 0.005, 0.1),
   )
-  def test_calibrate(self, objective, max_weight, l2_norm):
+  def test_calibrate(self, objective, min_weight, max_weight, l2_norm):
     weights, success = ec.calibrate(
         covariates=self.covariates,
         target_covariates=self.target_covariates,
         objective=objective,
+        min_weight=min_weight,
         max_weight=max_weight,
         l2_norm=l2_norm)
     self.assertTrue(success)
-    self.assert_weights_constraints(weights, max_weight)
+    self.assert_weights_constraints(weights, min_weight, max_weight)
     self.assert_balancing_constraint(weights, l2_norm)
 
   def test_entropy_balancing_bounded(self):
@@ -185,6 +195,14 @@ class EmpiricalCalibrationTest(parameterized.TestCase):
           target_covariates=self.target_covariates,
           max_weight=1.0 / (_SIZE + 1000))
 
+  def test_invalid_min_weight(self):
+    # Should fail when the min_weight is larger than the uniform weight.
+    with self.assertRaises(ValueError):
+      ec.calibrate(
+          covariates=self.covariates,
+          target_covariates=self.target_covariates,
+          min_weight=1.0 / (_SIZE - 1000))
+
   @parameterized.parameters((0.0), (0.07), (0.12))
   @mock.patch("__main__.ec.core.calibrate",
               side_effect=_mock_calibrate)
@@ -200,6 +218,7 @@ class EmpiricalCalibrationTest(parameterized.TestCase):
             target_weights=None,
             autoscale=None,
             objective=None,
+            min_weight=None,
             max_weight=None,
             increment=0.01)[1],
         min_feasible_l2_norm)
@@ -265,13 +284,15 @@ class FromFormulaTest(parameterized.TestCase):
         "y": [1, 2, 3]
     }, columns=["x", "y"])
     self.seed_dmatrix = pd.DataFrame({
-        "x[T.b]": [0.0, 1.0, 0.0],
-        "x[T.c]": [0.0, 0.0, 1.0],
+        "x[a]": [1.0, 0.0, 0.0],
+        "x[b]": [0.0, 1.0, 0.0],
+        "x[c]": [0.0, 0.0, 1.0],
         "y": [1.0, 2.0, 3.0],
-        "x[T.b]:y": [0.0, 2.0, 0.0],
-        "x[T.c]:y": [0.0, 0.0, 3.0]
-    }, columns=["x[T.b]", "x[T.c]",
-                "y", "x[T.b]:y", "x[T.c]:y"])
+        "x[a]:y": [1.0, 0.0, 0.0],
+        "x[b]:y": [0.0, 2.0, 0.0],
+        "x[c]:y": [0.0, 0.0, 3.0]
+    }, columns=["x[a]", "x[b]", "x[c]",
+                "y", "x[a]:y", "x[b]:y", "x[c]:y"])
     # Generate df's and dmatrix's with more rows.
     self.idx = [0, 0,
                 1, 1, 1, 1,
@@ -287,7 +308,7 @@ class FromFormulaTest(parameterized.TestCase):
     self.dmatrix = self.seed_dmatrix.iloc[self.idx]
     self.target_dmatrix = self.seed_dmatrix.iloc[self.target_idx]
 
-    self.columns = ["x[T.b]", "x[T.c]", "y"]
+    self.columns = ["x[a]", "x[b]", "x[c]", "y"]
     self.dmatrix = self.dmatrix[self.columns]
     self.target_dmatrix = self.target_dmatrix[self.columns]
 
@@ -307,7 +328,7 @@ class FromFormulaTest(parameterized.TestCase):
   def test_dmatrix_from_formula_no_interaction(self):
     # No interaction, so only main effect terms are expected.
     pd_testing.assert_frame_equal(
-        self.seed_dmatrix[["x[T.b]", "x[T.c]", "y"]],
+        self.seed_dmatrix[["x[a]", "x[b]", "x[c]", "y"]],
         ec.dmatrix_from_formula(formula="~ x + y", df=self.seed_df))
 
   def test_dmatrix_from_formula_y_raises_error(self):
