@@ -135,7 +135,7 @@ def calibrate(covariates: np.ndarray,
       values are Objective.ENTROPY and Objective.QUADRATIC.
     min_weight: The lower bound on weights. Must be between 0.0 and the uniform
       weight (1 / number of rows in `covariates`).
-    max_weight: The upper bound on weights. Must between uniform weight
+    max_weight: The upper bound on weights. Must be between the uniform weight
       (1 / number of rows in `covariates`) and 1.0.
     l2_norm: The L2 norm of the covaraite balance constraint, i.e., the
       Euclidean distance between the weighted mean of covariates and the simple
@@ -270,9 +270,11 @@ def maybe_exact_calibrate(covariates: np.ndarray,
                           target_weights: np.ndarray = None,
                           autoscale: bool = False,
                           objective: Objective = Objective.QUADRATIC,
+                          min_weight: float = 0.0,
                           max_weight: float = 1.0,
                           increment: float = 0.001) -> Tuple[np.ndarray, float]:
   """Finds feasible weights with the tightest covariate balance constraint.
+  
   It is possible that there is no feasible solution for the weighted mean of
   covariates to exactly match the mean of target covariates. In such case, one
   needs to relax the covariate balance constraint. This function searches on a
@@ -298,13 +300,17 @@ def maybe_exact_calibrate(covariates: np.ndarray,
       scaling to `target_covariates`. Setting it to True can help improve
       numerical stability.
     objective: The objective of the convex optimization problem.
-    max_weight: The upper bound on weights. Must between uniform weight
+    min_weight: The lower bound on weights. Must be between 0.0 and the uniform
+      weight (1 / number of rows in `covariates`).
+    max_weight: The upper bound on weights. Must be between the uniform weight
       (1 / number of rows in `covariates`) and 1.0.
     increment: The increment of the search sequence.
   Returns:
     A tuple of (weights, l2_norm) where
       weights: The weights for the subjects. They should sum up to 1.
       l2_norm: The L2 norm of the covariate balance constraint.
+  Raises:
+    ConvergenceError: If the calibration could not converge for any l2_norm.
   """
   if autoscale:
     scaler = preprocessing.MinMaxScaler()
@@ -314,7 +320,7 @@ def maybe_exact_calibrate(covariates: np.ndarray,
   def bracket():
     """Brackets the tightest covariate balance constraint by a power series."""
     for j in range(_MAX_EXPONENT):
-      right = np.power(2, j, dtype=np.int) - 1
+      right = np.power(2, j, dtype=int) - 1
       l2_norm = right * increment
       weights, success = calibrate(
           covariates,
@@ -323,6 +329,7 @@ def maybe_exact_calibrate(covariates: np.ndarray,
           target_weights,
           autoscale=False,
           objective=objective,
+          min_weight=min_weight,
           max_weight=max_weight,
           l2_norm=l2_norm)
       logging.info("Bracketing %s with l2_norm = %d*increment = %f",
@@ -330,7 +337,7 @@ def maybe_exact_calibrate(covariates: np.ndarray,
       if success:
         break
 
-    return weights, right
+    return weights, right, success
 
   def zoom(left, right, weights):
     """Recursively halves the interval until its length becomes `increment`."""
@@ -345,6 +352,7 @@ def maybe_exact_calibrate(covariates: np.ndarray,
         target_weights,
         autoscale=False,
         objective=objective,
+        min_weight=min_weight,
         max_weight=max_weight,
         l2_norm=l2_norm)
     logging.info("Zooming %s with l2_norm = %d*increment = %f",
@@ -354,7 +362,10 @@ def maybe_exact_calibrate(covariates: np.ndarray,
 
     return zoom(mid, right, weights)
 
-  weights, right = bracket()
+  weights, right, success = bracket()
+  if not success:
+    raise ConvergenceError(
+        "None of the attempted l2_norm error bounds gave a solution.")
   if right == 0:
     return weights, 0
 
