@@ -375,17 +375,26 @@ def maybe_exact_calibrate(covariates: np.ndarray,
 
 def dmatrix_from_formula(formula: str, df: pd.DataFrame) -> pd.DataFrame:
   """Generates dmatrix from formula and dataframe.
-  This is a wrapper around patsy's dmatrix function.
+
+  Builds a design matrix by applying patsy's dmatrix function one variable at a
+  time to ensure that reference categories of categorical variables are not
+  dropped.
   Args:
-    formula: Formula to be fed into patsy. No outcome variable allowed.
+    formula: patsy-style formula. No outcome variable allowed. Interactions
+      between categorical variables of the form dim1*dim2 should not be used
+      (use dim1:dim2 instead).
     df: Df containing the raw data.
   Returns:
     Design matrix.
   """
-  dmatrix = patsy.highlevel.dmatrix(formula, df, return_type="dataframe")
-  if "Intercept" in dmatrix.columns:
-    dmatrix.drop(columns="Intercept", inplace=True)
-  return dmatrix
+
+  # Parse the formula into a list of dimensions
+  dimensions = formula.replace(" ", "").replace("~-1+", "").replace(
+      "~0+", "").replace("~1+", "").replace("~", "").split("+")
+  return pd.concat([
+      patsy.highlevel.dmatrix(
+          "~ 0 + " + dimj, df, return_type="dataframe") for dimj in dimensions
+      ], axis=1)
 
 
 def from_formula(formula: str,
@@ -395,13 +404,17 @@ def from_formula(formula: str,
                  target_weights: np.ndarray = None,
                  autoscale: bool = False,
                  objective: Objective = Objective.QUADRATIC,
+                 min_weight: float = 0.0,
                  max_weight: float = 1.0,
                  increment: float = 0.001) -> Tuple[np.ndarray, float]:
   """"Runs empirical calibration function from formula.
+  
   This is the formula API of the maybe_exact_calibrate function.
   Args:
     formula: Formula used to generate design matrix.
       No outcome variable allowed.
+      Interactions between categorical variables of the form dim1*dim2 should
+        not be used (use dim1:dim2 instead).
     df: Data to be calibrated.
     target_df: Data containing the target.
     baseline_weights: baseline weights. For example, survey data may come
@@ -415,13 +428,17 @@ def from_formula(formula: str,
       scaling to `target_covariate`. Setting it to True can help improve
       numerical stability.
     objective: The objective of the convex optimization problem.
-    max_weight: The upper bound on weights. Must between uniform weight
+    min_weight: The lower bound on weights. Must be between 0.0 and the uniform
+      weight (1 / number of rows in `df`).
+    max_weight: The upper bound on weights. Must be between the uniform weight
       (1 / number of rows in `df`) and 1.0.
     increment: The increment of the search sequence.
   Returns:
     A tuple of (weights, l2_norm) where
       weights: The weights for the subjects. They should sum up to 1.
       l2_norm: The L2 norm of the covariate balance constraint.
+  Raises:
+    ConvergenceError: If the calibration could not converge for any l2_norm.
   """
   target_covariates = dmatrix_from_formula(formula=formula, df=target_df)
   covariates = dmatrix_from_formula(formula=formula, df=df)
@@ -433,5 +450,6 @@ def from_formula(formula: str,
       target_weights=target_weights,
       autoscale=autoscale,
       objective=objective,
+      min_weight=min_weight,
       max_weight=max_weight,
       increment=increment)
