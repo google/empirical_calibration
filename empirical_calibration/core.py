@@ -59,8 +59,10 @@ class Objective(enum.Enum):
   # maximizes the effective sample size.
   QUADRATIC = 1
 
+  
 class ConvergenceError(Exception):
   pass
+
 
 def calibrate(covariates: np.ndarray,
               target_covariates: np.ndarray,
@@ -68,9 +70,11 @@ def calibrate(covariates: np.ndarray,
               target_weights: np.ndarray = None,
               autoscale: bool = False,
               objective: Objective = Objective.QUADRATIC,
+              min_weight: float = 0.0,
               max_weight: float = 1.0,
               l2_norm: float = 0) -> Tuple[np.ndarray, bool]:
   """Calibrates covariates toward target.
+  
   It solves a constrained convex optimization problem that minimizes the
   variation of weights for units while achieving direct covariate
   balance. The weighted mean of covariates would match the simple mean
