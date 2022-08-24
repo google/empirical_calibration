@@ -133,6 +133,8 @@ def calibrate(covariates: np.ndarray,
       numerical stability.
     objective: The objective of the convex optimization problem. Supported
       values are Objective.ENTROPY and Objective.QUADRATIC.
+    min_weight: The lower bound on weights. Must be between 0.0 and the uniform
+      weight (1 / number of rows in `covariates`).
     max_weight: The upper bound on weights. Must between uniform weight
       (1 / number of rows in `covariates`) and 1.0.
     l2_norm: The L2 norm of the covaraite balance constraint, i.e., the
@@ -165,6 +167,9 @@ def calibrate(covariates: np.ndarray,
   if max_weight < uniform_weight:
     raise ValueError("max_weight %f cannot be smaller than uniform weight %f" %
                      (max_weight, uniform_weight))
+  if min_weight > uniform_weight:
+    raise ValueError("min_weight %f cannot be larger than uniform weight %f" %
+                     (min_weight, uniform_weight))
 
   baseline_weights_is_none = baseline_weights is None
   if baseline_weights is not None:
@@ -187,20 +192,19 @@ def calibrate(covariates: np.ndarray,
     beta_init = np.zeros(num_covariates + 1)
   elif objective == Objective.QUADRATIC:
     if baseline_weights_is_none:
-      weight_link = lambda x: np.clip(x, 0.0, max_weight)
+      weight_link = lambda x: np.clip(x, min_weight, max_weight)
       # Solution of the dual problem without the non-negative weight constraint.
-      beta_init = np.linalg.solve(
-          np.matmul(z.T, z), np.concatenate((np.ones(1),
-                                             np.zeros(num_covariates))))
+      # Use pseudoinverse in case z is not full rank.
+      beta_init = np.linalg.pinv(np.matmul(z.T, z)) @ np.concatenate(
+          (np.ones(1), np.zeros(num_covariates)))
     else:
-      weight_link = lambda x: np.clip(
-          x * baseline_weights + baseline_weights, 0.0, max_weight)
-    # Solution of the dual problem without the non-negative weight constraint.
-      beta_init = np.linalg.solve(
-          z.T @ np.diag(baseline_weights) @ z,
-          np.concatenate((np.ones(1), np.zeros(num_covariates))) -
-          z.T @ baseline_weights
-      )
+      weight_link = lambda x: np.clip(x * baseline_weights + baseline_weights,
+          min_weight, max_weight)
+      # Solution of the dual problem without the non-negative weight constraint.
+      # Use pseudoinverse in case z is not full rank.
+      beta_init = np.linalg.pinv(z.T @ np.diag(baseline_weights) @ z) @ (
+          np.concatenate(
+              (np.ones(1), np.zeros(num_covariates))) - z.T @ baseline_weights)
   else:
     raise ValueError("unknown objective %s" % objective)
 
@@ -216,24 +220,37 @@ def calibrate(covariates: np.ndarray,
 
   logging.info(
       "Running calibration with objective=%s, autoscale=%s, l2_norm=%s, "
-      "max_weight=%s", objective.name, autoscale, l2_norm,
-      (1.0 if objective == Objective.ENTROPY else max_weight))
+      "max_weight=%s, min_weight=%s:", objective.name, autoscale, l2_norm,
+      (1.0 if objective == Objective.ENTROPY else max_weight),
+      (0.0 if objective == Objective.ENTROPY else min_weight))
   beta, info_dict, status, msg = optimize.fsolve(
       estimating_equation, x0=beta_init, full_output=True)
   weights = weight_link(np.dot(z, beta))
   logging.info(msg)
   logging.info("Number of function calls: %d", info_dict["nfev"])
 
-  if objective == Objective.ENTROPY and np.max(weights) > max_weight:
+  if objective == Objective.ENTROPY and ((np.max(weights) > max_weight) or
+                                         (np.min(weights) < min_weight)):
     if baseline_weights_is_none:
-      weight_link = lambda x: np.exp(np.minimum(x, np.log(max_weight)))
+      if min_weight == 0.0:
+        weight_link = lambda x: np.exp(np.minimum(x, np.log(max_weight)))
+      else:
+        weight_link = lambda x: np.exp(
+            np.clip(x, np.log(min_weight), np.log(max_weight)))
     else:
-      weight_link = lambda x: np.exp(
-          np.minimum(np.log(baseline_weights) + (x - 1), np.log(max_weight)))
+      if min_weight == 0.0:
+        weight_link = lambda x: np.exp(
+            np.minimum(np.log(baseline_weights) + (x - 1), np.log(max_weight)))
+      else:
+        weight_link = lambda x: np.exp(
+            np.clip(
+                np.log(baseline_weights) +
+                (x - 1), np.log(min_weight), np.log(max_weight)))
 
     logging.info(
         "Running calibration with objective=%s, autoscale=%s, l2_norm=%s, "
-        "max_weight=%s:", objective.name, autoscale, l2_norm, max_weight)
+        "max_weight=%s, min_weight=%s:", objective.name, autoscale, l2_norm,
+        max_weight, min_weight)
     beta, info_dict, status, msg = optimize.fsolve(
         estimating_equation, x0=beta, full_output=True)
     weights = weight_link(np.dot(z, beta))
