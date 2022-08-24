@@ -29,10 +29,11 @@ from absl.testing import parameterized
 _SIZE = 2000
 
 
-def _mock_calibrate(covariates, target_covariates, target_weights, autoscale,
+def _mock_calibrate(covariates, target_covariates, baseline_weights,
+                    target_weights, autoscale,
                     objective, min_weight, max_weight, l2_norm):
   """Mocks the `calibrate` to return success only when `l2_norm` is large."""
-  del target_covariates, covariates, target_weights,
+  del target_covariates, covariates, target_weights, baseline_weights
   del autoscale, objective, min_weight, max_weight
   if l2_norm < _mock_calibrate.min_feasible_l2_norm:
     return None, False
