@@ -111,7 +111,7 @@ def calibrate(covariates: np.ndarray,
   att = np.mean(treatment_outcome) - np.sum(control_outcome * weights)
   # Estimate ATT for a multivariate outcome.
   att = np.mean(
-      treatment_outcome, axis=0) - np.matmul(control_outcome.T, weights)
+      treatment_outcome, axis=0) - control_outcome.T @ weights
   ```
   Args:
     covariates: covariates to be calibrated. All values must be numeric.
@@ -195,7 +195,7 @@ def calibrate(covariates: np.ndarray,
       weight_link = lambda x: np.clip(x, min_weight, max_weight)
       # Solution of the dual problem without the non-negative weight constraint.
       # Use pseudoinverse in case z is not full rank.
-      beta_init = np.linalg.pinv(np.matmul(z.T, z)) @ np.concatenate(
+      beta_init = np.linalg.pinv(z.T @ z) @ np.concatenate(
           (np.ones(1), np.zeros(num_covariates)))
     else:
       weight_link = lambda x: np.clip(x * baseline_weights + baseline_weights,
@@ -393,7 +393,8 @@ def dmatrix_from_formula(formula: str, df: pd.DataFrame) -> pd.DataFrame:
       "~0+", "").replace("~1+", "").replace("~", "").split("+")
   return pd.concat([
       patsy.highlevel.dmatrix(
-          "~ 0 + " + dimj, df, return_type="dataframe") for dimj in dimensions
+          f"~ 0 + {dimension}", df,
+          return_type="dataframe") for dimension in dimensions
       ], axis=1)
 
 
