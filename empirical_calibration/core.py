@@ -59,6 +59,10 @@ class Objective(enum.Enum):
   # maximizes the effective sample size.
   QUADRATIC = 1
 
+  
+class ConvergenceError(Exception):
+  pass
+
 
 def calibrate(covariates: np.ndarray,
               target_covariates: np.ndarray,
@@ -66,9 +70,11 @@ def calibrate(covariates: np.ndarray,
               target_weights: np.ndarray = None,
               autoscale: bool = False,
               objective: Objective = Objective.QUADRATIC,
+              min_weight: float = 0.0,
               max_weight: float = 1.0,
               l2_norm: float = 0) -> Tuple[np.ndarray, bool]:
   """Calibrates covariates toward target.
+  
   It solves a constrained convex optimization problem that minimizes the
   variation of weights for units while achieving direct covariate
   balance. The weighted mean of covariates would match the simple mean
@@ -105,7 +111,7 @@ def calibrate(covariates: np.ndarray,
   att = np.mean(treatment_outcome) - np.sum(control_outcome * weights)
   # Estimate ATT for a multivariate outcome.
   att = np.mean(
-      treatment_outcome, axis=0) - np.matmul(control_outcome.T, weights)
+      treatment_outcome, axis=0) - control_outcome.T @ weights
   ```
   Args:
     covariates: covariates to be calibrated. All values must be numeric.
@@ -127,7 +133,9 @@ def calibrate(covariates: np.ndarray,
       numerical stability.
     objective: The objective of the convex optimization problem. Supported
       values are Objective.ENTROPY and Objective.QUADRATIC.
-    max_weight: The upper bound on weights. Must between uniform weight
+    min_weight: The lower bound on weights. Must be between 0.0 and the uniform
+      weight (1 / number of rows in `covariates`).
+    max_weight: The upper bound on weights. Must be between the uniform weight
       (1 / number of rows in `covariates`) and 1.0.
     l2_norm: The L2 norm of the covaraite balance constraint, i.e., the
       Euclidean distance between the weighted mean of covariates and the simple
@@ -159,6 +167,9 @@ def calibrate(covariates: np.ndarray,
   if max_weight < uniform_weight:
     raise ValueError("max_weight %f cannot be smaller than uniform weight %f" %
                      (max_weight, uniform_weight))
+  if min_weight > uniform_weight:
+    raise ValueError("min_weight %f cannot be larger than uniform weight %f" %
+                     (min_weight, uniform_weight))
 
   baseline_weights_is_none = baseline_weights is None
   if baseline_weights is not None:
@@ -181,20 +192,19 @@ def calibrate(covariates: np.ndarray,
     beta_init = np.zeros(num_covariates + 1)
   elif objective == Objective.QUADRATIC:
     if baseline_weights_is_none:
-      weight_link = lambda x: np.clip(x, 0.0, max_weight)
+      weight_link = lambda x: np.clip(x, min_weight, max_weight)
       # Solution of the dual problem without the non-negative weight constraint.
-      beta_init = np.linalg.solve(
-          np.matmul(z.T, z), np.concatenate((np.ones(1),
-                                             np.zeros(num_covariates))))
+      # Use pseudoinverse in case z is not full rank.
+      beta_init = np.linalg.pinv(z.T @ z) @ np.concatenate(
+          (np.ones(1), np.zeros(num_covariates)))
     else:
-      weight_link = lambda x: np.clip(
-          x * baseline_weights + baseline_weights, 0.0, max_weight)
-    # Solution of the dual problem without the non-negative weight constraint.
-      beta_init = np.linalg.solve(
-          z.T @ np.diag(baseline_weights) @ z,
-          np.concatenate((np.ones(1), np.zeros(num_covariates))) -
-          z.T @ baseline_weights
-      )
+      weight_link = lambda x: np.clip(x * baseline_weights + baseline_weights,
+          min_weight, max_weight)
+      # Solution of the dual problem without the non-negative weight constraint.
+      # Use pseudoinverse in case z is not full rank.
+      beta_init = np.linalg.pinv(z.T @ np.diag(baseline_weights) @ z) @ (
+          np.concatenate(
+              (np.ones(1), np.zeros(num_covariates))) - z.T @ baseline_weights)
   else:
     raise ValueError("unknown objective %s" % objective)
 
@@ -210,24 +220,37 @@ def calibrate(covariates: np.ndarray,
 
   logging.info(
       "Running calibration with objective=%s, autoscale=%s, l2_norm=%s, "
-      "max_weight=%s", objective.name, autoscale, l2_norm,
-      (1.0 if objective == Objective.ENTROPY else max_weight))
+      "max_weight=%s, min_weight=%s:", objective.name, autoscale, l2_norm,
+      (1.0 if objective == Objective.ENTROPY else max_weight),
+      (0.0 if objective == Objective.ENTROPY else min_weight))
   beta, info_dict, status, msg = optimize.fsolve(
       estimating_equation, x0=beta_init, full_output=True)
   weights = weight_link(np.dot(z, beta))
   logging.info(msg)
   logging.info("Number of function calls: %d", info_dict["nfev"])
 
-  if objective == Objective.ENTROPY and np.max(weights) > max_weight:
+  if objective == Objective.ENTROPY and ((np.max(weights) > max_weight) or
+                                         (np.min(weights) < min_weight)):
     if baseline_weights_is_none:
-      weight_link = lambda x: np.exp(np.minimum(x, np.log(max_weight)))
+      if min_weight == 0.0:
+        weight_link = lambda x: np.exp(np.minimum(x, np.log(max_weight)))
+      else:
+        weight_link = lambda x: np.exp(
+            np.clip(x, np.log(min_weight), np.log(max_weight)))
     else:
-      weight_link = lambda x: np.exp(
-          np.minimum(np.log(baseline_weights) + (x - 1), np.log(max_weight)))
+      if min_weight == 0.0:
+        weight_link = lambda x: np.exp(
+            np.minimum(np.log(baseline_weights) + (x - 1), np.log(max_weight)))
+      else:
+        weight_link = lambda x: np.exp(
+            np.clip(
+                np.log(baseline_weights) +
+                (x - 1), np.log(min_weight), np.log(max_weight)))
 
     logging.info(
         "Running calibration with objective=%s, autoscale=%s, l2_norm=%s, "
-        "max_weight=%s:", objective.name, autoscale, l2_norm, max_weight)
+        "max_weight=%s, min_weight=%s:", objective.name, autoscale, l2_norm,
+        max_weight, min_weight)
     beta, info_dict, status, msg = optimize.fsolve(
         estimating_equation, x0=beta, full_output=True)
     weights = weight_link(np.dot(z, beta))
@@ -247,9 +270,11 @@ def maybe_exact_calibrate(covariates: np.ndarray,
                           target_weights: np.ndarray = None,
                           autoscale: bool = False,
                           objective: Objective = Objective.QUADRATIC,
+                          min_weight: float = 0.0,
                           max_weight: float = 1.0,
                           increment: float = 0.001) -> Tuple[np.ndarray, float]:
   """Finds feasible weights with the tightest covariate balance constraint.
+  
   It is possible that there is no feasible solution for the weighted mean of
   covariates to exactly match the mean of target covariates. In such case, one
   needs to relax the covariate balance constraint. This function searches on a
@@ -275,13 +300,17 @@ def maybe_exact_calibrate(covariates: np.ndarray,
       scaling to `target_covariates`. Setting it to True can help improve
       numerical stability.
     objective: The objective of the convex optimization problem.
-    max_weight: The upper bound on weights. Must between uniform weight
+    min_weight: The lower bound on weights. Must be between 0.0 and the uniform
+      weight (1 / number of rows in `covariates`).
+    max_weight: The upper bound on weights. Must be between the uniform weight
       (1 / number of rows in `covariates`) and 1.0.
     increment: The increment of the search sequence.
   Returns:
     A tuple of (weights, l2_norm) where
       weights: The weights for the subjects. They should sum up to 1.
       l2_norm: The L2 norm of the covariate balance constraint.
+  Raises:
+    ConvergenceError: If the calibration could not converge for any l2_norm.
   """
   if autoscale:
     scaler = preprocessing.MinMaxScaler()
@@ -291,7 +320,7 @@ def maybe_exact_calibrate(covariates: np.ndarray,
   def bracket():
     """Brackets the tightest covariate balance constraint by a power series."""
     for j in range(_MAX_EXPONENT):
-      right = np.power(2, j, dtype=np.int) - 1
+      right = np.power(2, j, dtype=int) - 1
       l2_norm = right * increment
       weights, success = calibrate(
           covariates,
@@ -300,6 +329,7 @@ def maybe_exact_calibrate(covariates: np.ndarray,
           target_weights,
           autoscale=False,
           objective=objective,
+          min_weight=min_weight,
           max_weight=max_weight,
           l2_norm=l2_norm)
       logging.info("Bracketing %s with l2_norm = %d*increment = %f",
@@ -307,7 +337,7 @@ def maybe_exact_calibrate(covariates: np.ndarray,
       if success:
         break
 
-    return weights, right
+    return weights, right, success
 
   def zoom(left, right, weights):
     """Recursively halves the interval until its length becomes `increment`."""
@@ -322,6 +352,7 @@ def maybe_exact_calibrate(covariates: np.ndarray,
         target_weights,
         autoscale=False,
         objective=objective,
+        min_weight=min_weight,
         max_weight=max_weight,
         l2_norm=l2_norm)
     logging.info("Zooming %s with l2_norm = %d*increment = %f",
@@ -331,7 +362,10 @@ def maybe_exact_calibrate(covariates: np.ndarray,
 
     return zoom(mid, right, weights)
 
-  weights, right = bracket()
+  weights, right, success = bracket()
+  if not success:
+    raise ConvergenceError(
+        "None of the attempted l2_norm error bounds gave a solution.")
   if right == 0:
     return weights, 0
 
@@ -341,17 +375,27 @@ def maybe_exact_calibrate(covariates: np.ndarray,
 
 def dmatrix_from_formula(formula: str, df: pd.DataFrame) -> pd.DataFrame:
   """Generates dmatrix from formula and dataframe.
-  This is a wrapper around patsy's dmatrix function.
+
+  Builds a design matrix by applying patsy's dmatrix function one variable at a
+  time to ensure that reference categories of categorical variables are not
+  dropped.
   Args:
-    formula: Formula to be fed into patsy. No outcome variable allowed.
+    formula: patsy-style formula. No outcome variable allowed. Interactions
+      between categorical variables of the form dim1*dim2 should not be used
+      (use dim1:dim2 instead).
     df: Df containing the raw data.
   Returns:
     Design matrix.
   """
-  dmatrix = patsy.highlevel.dmatrix(formula, df, return_type="dataframe")
-  if "Intercept" in dmatrix.columns:
-    dmatrix.drop(columns="Intercept", inplace=True)
-  return dmatrix
+
+  # Parse the formula into a list of dimensions
+  dimensions = formula.replace(" ", "").replace("~-1+", "").replace(
+      "~0+", "").replace("~1+", "").replace("~", "").split("+")
+  return pd.concat([
+      patsy.highlevel.dmatrix(
+          f"~ 0 + {dimension}", df,
+          return_type="dataframe") for dimension in dimensions
+      ], axis=1)
 
 
 def from_formula(formula: str,
@@ -361,13 +405,17 @@ def from_formula(formula: str,
                  target_weights: np.ndarray = None,
                  autoscale: bool = False,
                  objective: Objective = Objective.QUADRATIC,
+                 min_weight: float = 0.0,
                  max_weight: float = 1.0,
                  increment: float = 0.001) -> Tuple[np.ndarray, float]:
   """"Runs empirical calibration function from formula.
+  
   This is the formula API of the maybe_exact_calibrate function.
   Args:
     formula: Formula used to generate design matrix.
       No outcome variable allowed.
+      Interactions between categorical variables of the form dim1*dim2 should
+        not be used (use dim1:dim2 instead).
     df: Data to be calibrated.
     target_df: Data containing the target.
     baseline_weights: baseline weights. For example, survey data may come
@@ -381,13 +429,17 @@ def from_formula(formula: str,
       scaling to `target_covariate`. Setting it to True can help improve
       numerical stability.
     objective: The objective of the convex optimization problem.
-    max_weight: The upper bound on weights. Must between uniform weight
+    min_weight: The lower bound on weights. Must be between 0.0 and the uniform
+      weight (1 / number of rows in `df`).
+    max_weight: The upper bound on weights. Must be between the uniform weight
       (1 / number of rows in `df`) and 1.0.
     increment: The increment of the search sequence.
   Returns:
     A tuple of (weights, l2_norm) where
       weights: The weights for the subjects. They should sum up to 1.
       l2_norm: The L2 norm of the covariate balance constraint.
+  Raises:
+    ConvergenceError: If the calibration could not converge for any l2_norm.
   """
   target_covariates = dmatrix_from_formula(formula=formula, df=target_df)
   covariates = dmatrix_from_formula(formula=formula, df=df)
@@ -399,5 +451,6 @@ def from_formula(formula: str,
       target_weights=target_weights,
       autoscale=autoscale,
       objective=objective,
+      min_weight=min_weight,
       max_weight=max_weight,
       increment=increment)
