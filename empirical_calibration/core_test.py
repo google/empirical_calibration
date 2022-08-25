@@ -61,7 +61,7 @@ class EmpiricalCalibrationTest(parameterized.TestCase):
         l2_norm,
         np.linalg.norm(
             np.mean(self.target_covariates, axis=0) -
-            np.matmul(self.covariates.T, weights)))
+            self.covariates.T @ weights))
 
   @parameterized.parameters(
       (ec.Objective.ENTROPY, 0.0, 1.0, 0.0),
