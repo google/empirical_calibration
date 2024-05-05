@@ -20,7 +20,7 @@ from setuptools import setup
 
 setup(
     name='empirical_calibration',
-    version='0.11',
+    version='0.12',
     description='Package for empirical calibration',
     author='Google LLC',
     author_email='no-reply@google.com',
@@ -34,7 +34,7 @@ setup(
         'patsy',
         'scipy',
         'six',
-        'sklearn',
+        'scikit-learn',
     ],
     classifiers=[
         'Development Status :: 4 - Beta',
