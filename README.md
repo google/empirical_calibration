@@ -24,8 +24,16 @@ A Python Library For Empirical Calibration.
 
 The easiest way is propably using pip:
 
+* To install from github:
+
 ```
 pip install -q git+https://github.com/google/empirical_calibration
+```
+
+* To install from pypi:
+
+```
+pip install empirical-calibration
 ```
 
 If you are using a machine without admin rights, you can do:
